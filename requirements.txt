@@ -1,14 +1,11 @@
-# Sonaris — Unified Sonar Intelligence Platform
-# Dependencies
-
 streamlit>=1.28.0
+opencv-python-headless>=4.8.0
 ultralytics
 torch>=2.1.0
 torchvision>=0.16.0
 pandas
 numpy>=1.24.0
 pillow>=10.0.0
-opencv-python-headless>=4.8.0
 scikit-image>=0.21.0
 matplotlib>=3.7.0
 pyyaml>=6.0
