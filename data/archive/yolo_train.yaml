@@ -1,0 +1,7 @@
+path: /Users/melkor/Desktop/sonar1/data/archive
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 4
+names: ['aircraft', 'fish', 'other', 'shipwreck']

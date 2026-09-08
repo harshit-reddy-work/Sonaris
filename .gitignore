@@ -1,0 +1,79 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
+
+# Model Weights (exclude files >50MB)
+*.pth
+*.onnx
+*.engine
+*.pt
+!models/yolo11n_seg_best.pt
+models/yolov8x*.pt
+models/sam*.pth
+yolov8*.pt
+v7_colab_filtered/weights/
+
+# Dataset images (too large for git)
+data/archive/train/
+data/archive/valid/
+data/archive/test/
+
+# Outputs
+outputs/vis/
+outputs/reports/
+outputs/*.csv
+runs/
+results/
+predictions/
+
+# Zip files
+*.zip
+*.rar
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Old docs
+docs/
+COLAB_EGITIM.md
+ROADMAP.md
+
+# EDA / eval outputs
+outputs/eda_*.png
+outputs/eval_*.png
+
+# Training batch images
+v7_colab_filtered/train_batch*.jpg
+v7_colab_filtered/labels.jpg
+
+# Legacy classifier
+src/postprocessing/classifier.py
+
+# Temp / logs
+*.tmp
+*.log
+.env
+*.env
