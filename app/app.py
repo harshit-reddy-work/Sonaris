@@ -427,13 +427,20 @@ def google_maps_url(lat, lon):
 
 
 @st.cache_resource
-def load_lite_model():
-    """Load YOLO11n-Seg model (cached)."""
+def load_lite_model(file_mtime: float = 0.0):
+    """Load YOLO11n-Seg model (cached based on file timestamp)."""
     if not YOLO_AVAILABLE:
         return None
     if LITE_MODEL_PATH.exists():
         return YOLO(str(LITE_MODEL_PATH))
     return None
+
+
+def get_lite_model():
+    """Get Lite model with cache auto-invalidation on weight update."""
+    mtime = LITE_MODEL_PATH.stat().st_mtime if LITE_MODEL_PATH.exists() else 0.0
+    return load_lite_model(mtime)
+
 
 
 @st.cache_resource
@@ -789,7 +796,7 @@ def page_single_analysis():
         # Load appropriate model
         if is_lite:
             progress.progress(20, text="Loading YOLO11n-Seg model...")
-            model = load_lite_model()
+            model = get_lite_model()
             if model is not None:
                 progress.progress(50, text="Running segmentation inference...")
                 detections, annotated_bgr = run_lite_inference(model, image_bgr, conf=conf, imgsz=imgsz)
@@ -829,7 +836,7 @@ def page_single_analysis():
                             })
             else:
                 st.warning("⚠️ YOLOv8x weights not found. Falling back to Lite mode...")
-                model = load_lite_model()
+                model = get_lite_model()
                 if model is not None:
                     detections, annotated_bgr = run_lite_inference(model, image_bgr, conf=conf, imgsz=imgsz)
                     annotated_img = bgr_to_rgb(annotated_bgr)
@@ -995,7 +1002,7 @@ def page_batch_analysis():
     st.markdown("<br>", unsafe_allow_html=True)
 
     if st.button("🌊  RUN BATCH ANALYSIS", use_container_width=True):
-        model = load_lite_model()
+        model = get_lite_model()
         if model is None:
             st.error("⚠️ YOLO model not found. Cannot run batch analysis.")
             return
@@ -1118,7 +1125,7 @@ def page_dataset_explorer():
 
             with ex_col2:
                 st.markdown('<div class="section-head">Model Prediction</div>', unsafe_allow_html=True)
-                model = load_lite_model()
+                model = get_lite_model()
                 if model is not None:
                     with st.spinner("Running inference..."):
                         dets, ann_bgr = run_lite_inference(model, image_bgr, conf=0.3, imgsz=1024)
@@ -1254,12 +1261,16 @@ def main():
         pro_local = PRO_YOLO_PATH.exists()
         sam_ok = SAM_AVAILABLE and SAM_PATH.exists()
 
-        st.markdown(f"{'🟢' if lite_ok else '🔴'} Lite Model {'Ready' if lite_ok else 'Missing'}")
+        st.markdown(f"{'🟢' if lite_ok else '🔴'} Lite Model {'(4 Classes)' if lite_ok else 'Missing'}")
+        if lite_ok:
+            m = get_lite_model()
+            if m and hasattr(m, 'names'):
+                st.caption(f"🎯 Classes: {', '.join(m.names.values())}")
         st.markdown(f"{'🟢' if pro_local else '🟢'} Pro YOLO {'Local' if pro_local else 'Auto-DL'}")
         st.markdown(f"{'🟢' if sam_ok else '🟡'} SAM Engine {'Ready' if sam_ok else 'Optional'}")
 
         st.markdown("---")
-        st.caption("v1.0.0 · Sonaris Platform")
+        st.caption("v1.1.0 · Sonaris Multi-Class Platform")
 
     # Route to page
     if page == "🏠 Home":
