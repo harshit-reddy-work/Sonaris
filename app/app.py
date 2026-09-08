@@ -16,8 +16,41 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-from PIL.ExifTags import TAGS, GPSTAGS
-import cv2
+try:
+    import cv2
+    CV2_AVAILABLE = True
+except (ImportError, Exception):
+    cv2 = None
+    CV2_AVAILABLE = False
+
+
+def bgr_to_rgb(img):
+    """Safely convert BGR to RGB with or without OpenCV."""
+    if img is None:
+        return img
+    if cv2 is not None:
+        try:
+            return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        except Exception:
+            pass
+    if hasattr(img, "shape") and len(img.shape) == 3 and img.shape[2] == 3:
+        return img[:, :, ::-1]
+    return img
+
+
+def rgb_to_bgr(img):
+    """Safely convert RGB to BGR with or without OpenCV."""
+    if img is None:
+        return img
+    if cv2 is not None:
+        try:
+            return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        except Exception:
+            pass
+    if hasattr(img, "shape") and len(img.shape) == 3 and img.shape[2] == 3:
+        return img[:, :, ::-1]
+    return img
+
 
 # ── Resolve project root ────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -456,31 +489,36 @@ def run_lite_inference(model, image_np, conf=0.5, imgsz=1024):
                 if masks_data is not None and i < len(masks_data):
                     mask = masks_data[i]
                     if mask.shape != image_np.shape[:2]:
-                        mask = cv2.resize(mask, (image_np.shape[1], image_np.shape[0]),
-                                          interpolation=cv2.INTER_NEAREST)
+                        if cv2 is not None:
+                            mask = cv2.resize(mask, (image_np.shape[1], image_np.shape[0]),
+                                              interpolation=cv2.INTER_NEAREST)
+                        else:
+                            pil_m = Image.fromarray((mask * 255).astype(np.uint8))
+                            mask = np.array(pil_m.resize((image_np.shape[1], image_np.shape[0]), Image.NEAREST)) / 255.0
                     mask_binary = (mask > 0.5).astype(np.uint8)
                     mask_area_px = float(np.sum(mask_binary))
 
                     # Simple shape classification
-                    contours, _ = cv2.findContours(mask_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                    if contours:
-                        cnt = max(contours, key=cv2.contourArea)
-                        perimeter = cv2.arcLength(cnt, True)
-                        if perimeter > 0:
-                            circularity = 4 * np.pi * mask_area_px / (perimeter ** 2)
-                            rect = cv2.minAreaRect(cnt)
-                            rect_area = rect[1][0] * rect[1][1]
-                            rectangularity = mask_area_px / max(rect_area, 1)
-                            aspect = max(rect[1]) / max(min(rect[1]), 1)
+                    if cv2 is not None:
+                        contours, _ = cv2.findContours(mask_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                        if contours:
+                            cnt = max(contours, key=cv2.contourArea)
+                            perimeter = cv2.arcLength(cnt, True)
+                            if perimeter > 0:
+                                circularity = 4 * np.pi * mask_area_px / (perimeter ** 2)
+                                rect = cv2.minAreaRect(cnt)
+                                rect_area = rect[1][0] * rect[1][1]
+                                rectangularity = mask_area_px / max(rect_area, 1)
+                                aspect = max(rect[1]) / max(min(rect[1]), 1)
 
-                            if circularity > 0.85:
-                                shape_type = "circular"
-                            elif rectangularity > 0.80:
-                                shape_type = "rectangular"
-                            elif aspect > 3.0:
-                                shape_type = "elongated"
-                            else:
-                                shape_type = "irregular"
+                                if circularity > 0.85:
+                                    shape_type = "circular"
+                                elif rectangularity > 0.80:
+                                    shape_type = "rectangular"
+                                elif aspect > 3.0:
+                                    shape_type = "elongated"
+                                else:
+                                    shape_type = "irregular"
 
                 # Resolution: assume 1.0 m/px (configurable)
                 res = 1.0
@@ -721,18 +759,21 @@ def page_single_analysis():
 
     # Preview
     image_np = np.array(pil_image)
-    image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+    image_bgr = rgb_to_bgr(image_np)
 
     # Optional preprocessing
-    if preprocess:
-        # CLAHE contrast enhancement
-        lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB)
-        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-        lab[:, :, 0] = clahe.apply(lab[:, :, 0])
-        image_bgr = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-        # Median denoise
-        image_bgr = cv2.medianBlur(image_bgr, 5)
-        image_np = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+    if preprocess and cv2 is not None:
+        try:
+            # CLAHE contrast enhancement
+            lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB)
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+            lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+            image_bgr = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+            # Median denoise
+            image_bgr = cv2.medianBlur(image_bgr, 5)
+            image_np = bgr_to_rgb(image_bgr)
+        except Exception:
+            pass
 
     # ── Run Analysis ────────────────────────────────────────────────────
     analyze = st.button("🌊  ANALYZE SONAR IMAGE", use_container_width=True)
@@ -752,7 +793,7 @@ def page_single_analysis():
             if model is not None:
                 progress.progress(50, text="Running segmentation inference...")
                 detections, annotated_bgr = run_lite_inference(model, image_bgr, conf=conf, imgsz=imgsz)
-                annotated_img = cv2.cvtColor(annotated_bgr, cv2.COLOR_BGR2RGB)
+                annotated_img = bgr_to_rgb(annotated_bgr)
             else:
                 progress.progress(50, text="Model not found — check models/ directory")
                 st.error("⚠️ YOLO model not found. Ensure `models/yolo11n_seg_best.pt` exists and `ultralytics` is installed.")
@@ -767,7 +808,7 @@ def page_single_analysis():
                 results = pro_model.predict(source=image_bgr, conf=conf, imgsz=imgsz, verbose=False)
                 if len(results) > 0:
                     r = results[0]
-                    annotated_img = cv2.cvtColor(r.plot(), cv2.COLOR_BGR2RGB)
+                    annotated_img = bgr_to_rgb(r.plot())
                     if r.boxes is not None:
                         for i in range(len(r.boxes)):
                             x1, y1, x2, y2 = r.boxes.xyxy[i].cpu().numpy()
@@ -791,7 +832,7 @@ def page_single_analysis():
                 model = load_lite_model()
                 if model is not None:
                     detections, annotated_bgr = run_lite_inference(model, image_bgr, conf=conf, imgsz=imgsz)
-                    annotated_img = cv2.cvtColor(annotated_bgr, cv2.COLOR_BGR2RGB)
+                    annotated_img = bgr_to_rgb(annotated_bgr)
                 else:
                     st.error("No model weights found in `models/` directory.")
                     return
@@ -965,10 +1006,11 @@ def page_batch_analysis():
         for i, f in enumerate(uploaded_files):
             progress.progress((i) / len(uploaded_files), text=f"Processing {f.name}...")
             pil = Image.open(f).convert("RGB")
-            img_bgr = cv2.cvtColor(np.array(pil), cv2.COLOR_RGB2BGR)
+            img_np = np.array(pil)
+            img_bgr = rgb_to_bgr(img_np)
             dets, ann_bgr = run_lite_inference(model, img_bgr, conf=batch_conf, imgsz=batch_imgsz)
-            ann_rgb = cv2.cvtColor(ann_bgr, cv2.COLOR_BGR2RGB)
-            all_results.append({"name": f.name, "detections": dets, "annotated": ann_rgb, "original": np.array(pil)})
+            ann_rgb = bgr_to_rgb(ann_bgr)
+            all_results.append({"name": f.name, "detections": dets, "annotated": ann_rgb, "original": img_np})
 
         progress.progress(1.0, text="Batch complete!")
         time.sleep(0.3)
@@ -1067,7 +1109,7 @@ def page_dataset_explorer():
             current_file = demo_files[idx]
             pil_img = Image.open(current_file).convert("RGB")
             image_np = np.array(pil_img)
-            image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+            image_bgr = rgb_to_bgr(image_np)
 
             ex_col1, ex_col2 = st.columns(2)
             with ex_col1:
@@ -1080,7 +1122,7 @@ def page_dataset_explorer():
                 if model is not None:
                     with st.spinner("Running inference..."):
                         dets, ann_bgr = run_lite_inference(model, image_bgr, conf=0.3, imgsz=1024)
-                        ann_rgb = cv2.cvtColor(ann_bgr, cv2.COLOR_BGR2RGB)
+                        ann_rgb = bgr_to_rgb(ann_bgr)
                         st.image(ann_rgb, use_container_width=True)
 
                     if dets:
