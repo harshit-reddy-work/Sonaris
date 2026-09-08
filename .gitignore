@@ -31,6 +31,7 @@ Thumbs.db
 *.engine
 *.pt
 !models/yolo11n_seg_best.pt
+!models/yolo11n_war_best.pt
 models/yolov8x*.pt
 models/sam*.pth
 yolov8*.pt

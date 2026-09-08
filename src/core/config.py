@@ -8,6 +8,7 @@ from enum import Enum
 
 class ModelMode(Enum):
     LITE = "LITE"
+    WAR = "WAR"
     PRO = "PRO"
 
 
@@ -27,6 +28,7 @@ class PathConfig:
     models_dir: Path = Path("models")
     outputs_dir: Path = Path("outputs")
     yolo11n_seg_weights: Path = Path("models/yolo11n_seg_best.pt")
+    yolo11n_war_weights: Path = Path("models/yolo11n_war_best.pt")
     yolov8x_weights: Path = Path("models/yolov8x_best.pt")
     sam_weights: Path = Path("models/sam_vit_b_01ec64.pth")
 

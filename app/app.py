@@ -81,6 +81,7 @@ except ImportError:
 
 # ── Model paths ─────────────────────────────────────────────────────────────
 LITE_MODEL_PATH = PROJECT_ROOT / "models" / "yolo11n_seg_best.pt"
+WAR_MODEL_PATH = PROJECT_ROOT / "models" / "yolo11n_war_best.pt"
 PRO_YOLO_PATH = PROJECT_ROOT / "models" / "yolov8x_best.pt"
 SAM_PATH = PROJECT_ROOT / "models" / "sam_vit_b_01ec64.pth"
 DEMO_DIR = PROJECT_ROOT / "data" / "demo"
@@ -442,6 +443,23 @@ def get_lite_model():
     return load_lite_model(mtime)
 
 
+@st.cache_resource
+def load_war_model(file_mtime: float = 0.0):
+    """Load War Mode YOLO11 tactical naval model (cached)."""
+    if not YOLO_AVAILABLE:
+        return None
+    if WAR_MODEL_PATH.exists():
+        return YOLO(str(WAR_MODEL_PATH))
+    return None
+
+
+def get_war_model():
+    """Get War Mode model with cache auto-invalidation on weight update."""
+    mtime = WAR_MODEL_PATH.stat().st_mtime if WAR_MODEL_PATH.exists() else 0.0
+    return load_war_model(mtime)
+
+
+
 
 @st.cache_resource
 def load_pro_yolo_model():
@@ -592,68 +610,76 @@ def page_home():
         st.markdown("""
         <div class="metric-card">
             <div class="metric-icon">🧠</div>
-            <div class="metric-val">2</div>
+            <div class="metric-val">3</div>
             <div class="metric-label">AI Models</div>
         </div>""", unsafe_allow_html=True)
     with c2:
         st.markdown("""
         <div class="metric-card">
-            <div class="metric-icon">🎯</div>
-            <div class="metric-val">80.1%</div>
-            <div class="metric-label">Best mAP@50</div>
+            <div class="metric-icon">⚔️</div>
+            <div class="metric-val">5</div>
+            <div class="metric-label">Naval Defense Classes</div>
         </div>""", unsafe_allow_html=True)
     with c3:
         st.markdown("""
         <div class="metric-card">
             <div class="metric-icon">📍</div>
             <div class="metric-val">GPS</div>
-            <div class="metric-label">Geospatial</div>
+            <div class="metric-label">Geospatial Mapping</div>
         </div>""", unsafe_allow_html=True)
     with c4:
         st.markdown("""
         <div class="metric-card">
             <div class="metric-icon">⚡</div>
-            <div class="metric-val">9.6</div>
-            <div class="metric-label">GFLOPs (Lite)</div>
+            <div class="metric-val">6.5</div>
+            <div class="metric-label">GFLOPs (War Mode)</div>
         </div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     # Feature cards
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.markdown("""
         <div class="glass">
             <div class="section-head">🚀 Lite Mode</div>
-            <h3 style="margin:0 0 8px 0;">YOLO11n-Seg</h3>
+            <h3 style="margin:0 0 8px 0;">Civilian 4-Class</h3>
             <div class="det-meta">
-                Ultra-lightweight instance segmentation with only <b style="color:#00e5a0">2.83M parameters</b>.
-                Runs on edge devices, AUVs, and survey boats without GPU requirements.
-                Provides both bounding boxes and pixel-level masks in real-time.
+                Ultra-lightweight instance segmentation (<b style="color:#00e5a0">2.83M params</b>).
+                Detects aircraft wreckage, fish schools, seabed debris, and shipwrecks in real-time.
             </div>
         </div>""", unsafe_allow_html=True)
 
     with col2:
         st.markdown("""
         <div class="glass">
-            <div class="section-head">🎯 Pro Mode</div>
-            <h3 style="margin:0 0 8px 0;">YOLOv8x + SAM</h3>
+            <div class="section-head">⚔️ War Mode</div>
+            <h3 style="margin:0 0 8px 0;">Naval Defense</h3>
             <div class="det-meta">
-                Two-stage hybrid pipeline combining <b style="color:#00c8ff">YOLOv8x detection</b>
-                (68.2M params, mAP50 = 0.801) with Meta's <b style="color:#a78bfa">SAM</b> for
-                pixel-perfect zero-shot boundary segmentation.
+                Tactical model trained on DRISHTI dataset (<b style="color:#ff6b6b">2.59M params</b>).
+                Detects subsea mines, pipelines, wrecks, ghost nets, and crab pots with threat alerts.
             </div>
         </div>""", unsafe_allow_html=True)
 
     with col3:
         st.markdown("""
         <div class="glass">
-            <div class="section-head">📍 Geospatial</div>
-            <h3 style="margin:0 0 8px 0;">GPS Integration</h3>
+            <div class="section-head">🎯 Pro Mode</div>
+            <h3 style="margin:0 0 8px 0;">YOLOv8x + SAM</h3>
             <div class="det-meta">
-                Extract coordinates from <b style="color:#ffc857">EXIF metadata</b>, sonar log files,
-                or manual entry. Auto-generates <b style="color:#00e5a0">Google Maps</b> links for
-                each detection with physical size estimation in meters.
+                Two-stage hybrid combining <b style="color:#00c8ff">YOLOv8x detection</b> (68.2M params)
+                with Meta's <b style="color:#a78bfa">SAM</b> for zero-shot boundary delineation.
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+    with col4:
+        st.markdown("""
+        <div class="glass">
+            <div class="section-head">📍 Geospatial</div>
+            <h3 style="margin:0 0 8px 0;">GPS Mapping</h3>
+            <div class="det-meta">
+                Extract coordinates from <b style="color:#ffc857">EXIF metadata</b> or sonar telemetry.
+                Auto-generates Google Maps coordinates with metric area and aspect ratio sizing.
             </div>
         </div>""", unsafe_allow_html=True)
 
@@ -695,9 +721,14 @@ def page_single_analysis():
     with st.sidebar:
         st.markdown('<div class="section-head">⚙️ Model Controls</div>', unsafe_allow_html=True)
 
-        mode = st.radio("Inference Mode", ["🚀 Lite — YOLO11n-Seg", "🎯 Pro — YOLOv8x + SAM"],
-                        help="Lite is fast & edge-ready. Pro provides highest accuracy.")
+        mode = st.radio("Inference Mode", [
+            "🚀 Lite — Civilian (4 Classes)",
+            "⚔️ War Mode — Naval Defense (5 Classes)",
+            "🎯 Pro — YOLOv8x + SAM Hybrid"
+        ], help="Lite: Aircraft, Fish, Debris, Shipwreck. War Mode: Submarine Pipelines, Mines, Ghost Nets, Wrecks. Pro: Server-grade hybrid.")
         is_lite = "Lite" in mode
+        is_war = "War" in mode
+        is_pro = "Pro" in mode
 
         conf = st.slider("Confidence Threshold", 0.10, 0.95, 0.50, 0.05,
                          help="Minimum confidence to display a detection")
@@ -786,7 +817,12 @@ def page_single_analysis():
     analyze = st.button("🌊  ANALYZE SONAR IMAGE", use_container_width=True)
 
     if analyze:
-        model_label = "Lite (YOLO11n-Seg)" if is_lite else "Pro (YOLOv8x + SAM)"
+        if is_war:
+            model_label = "War Mode (YOLO11n Tactical 5-Class)"
+        elif is_lite:
+            model_label = "Lite (YOLO11n Civilian 4-Class)"
+        else:
+            model_label = "Pro (YOLOv8x + SAM)"
         progress = st.progress(0, text=f"Initializing {model_label}...")
 
         t_start = time.perf_counter()
@@ -794,16 +830,27 @@ def page_single_analysis():
         annotated_img = image_np.copy()
 
         # Load appropriate model
-        if is_lite:
-            progress.progress(20, text="Loading YOLO11n-Seg model...")
+        if is_war:
+            progress.progress(20, text="Loading War Mode (Naval Tactical)...")
+            model = get_war_model()
+            if model is not None:
+                progress.progress(50, text="Running naval tactical threat inference...")
+                detections, annotated_bgr = run_lite_inference(model, image_bgr, conf=conf, imgsz=imgsz)
+                annotated_img = bgr_to_rgb(annotated_bgr)
+            else:
+                progress.progress(50, text="War Mode weights missing")
+                st.error("⚠️ War Mode model not found. Ensure `models/yolo11n_war_best.pt` exists.")
+                return
+        elif is_lite:
+            progress.progress(20, text="Loading YOLO11n Lite model...")
             model = get_lite_model()
             if model is not None:
-                progress.progress(50, text="Running segmentation inference...")
+                progress.progress(50, text="Running civilian inference...")
                 detections, annotated_bgr = run_lite_inference(model, image_bgr, conf=conf, imgsz=imgsz)
                 annotated_img = bgr_to_rgb(annotated_bgr)
             else:
                 progress.progress(50, text="Model not found — check models/ directory")
-                st.error("⚠️ YOLO model not found. Ensure `models/yolo11n_seg_best.pt` exists and `ultralytics` is installed.")
+                st.error("⚠️ YOLO model not found. Ensure `models/yolo11n_seg_best.pt` exists.")
                 return
         else:
             # Pro mode
@@ -835,8 +882,8 @@ def page_single_analysis():
                                 "shape_type": "irregular",
                             })
             else:
-                st.warning("⚠️ YOLOv8x weights not found. Falling back to Lite mode...")
-                model = get_lite_model()
+                st.warning("⚠️ YOLOv8x weights not found. Falling back to War mode...")
+                model = get_war_model() or get_lite_model()
                 if model is not None:
                     detections, annotated_bgr = run_lite_inference(model, image_bgr, conf=conf, imgsz=imgsz)
                     annotated_img = bgr_to_rgb(annotated_bgr)
@@ -850,12 +897,13 @@ def page_single_analysis():
         progress.empty()
 
         # ── Store in session state ──────────────────────────────────────
+        mode_tag = "War Mode" if is_war else ("Lite" if is_lite else "Pro")
         st.session_state["last_detections"] = detections
         st.session_state["last_annotated"] = annotated_img
         st.session_state["last_original"] = image_np
         st.session_state["last_inference_ms"] = inference_ms
         st.session_state["last_conf"] = conf
-        st.session_state["last_mode"] = "Lite" if is_lite else "Pro"
+        st.session_state["last_mode"] = mode_tag
         st.session_state["last_lat"] = lat
         st.session_state["last_lon"] = lon
 
@@ -879,6 +927,20 @@ def page_single_analysis():
                     unsafe_allow_html=True)
     else:
         st.markdown('<div class="badge badge-danger">🔴 NO ANOMALIES DETECTED</div>', unsafe_allow_html=True)
+
+    # Tactical Threat Alert banners for War Mode
+    if "War" in mode_str and detections:
+        det_names = [d["class_name"].lower() for d in detections]
+        if any("mine" in n for n in det_names):
+            st.error("🚨 **TACTICAL THREAT DETECTED**: Subsea Naval Mine / Explosive Cylinder Identified! Threat Level: CRITICAL. Geo-coordinates flagged for countermeasures.")
+        if any("pipeline" in n for n in det_names):
+            st.info("🛡️ **CRITICAL INFRASTRUCTURE**: Submarine Pipeline Detected. Structural integrity & seabed routing logged.")
+        if any("ghost_net" in n for n in det_names):
+            st.warning("⚠️ **NAVIGATION HAZARD**: Abandoned Ghost Fishing Net / Submerged Entanglement Hazard Identified.")
+        if any("shipwreck" in n for n in det_names):
+            st.info("⚓ **HYDROGRAPHIC FEATURE**: Submerged Vessel Wreckage Located.")
+        if any("crab_pot" in n for n in det_names):
+            st.caption("🦀 **BENTHIC ACTIVITY**: Commercial Crab Pot / Seabed Cage Detected.")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -988,6 +1050,10 @@ def page_batch_analysis():
 
     with st.sidebar:
         st.markdown('<div class="section-head">⚙️ Batch Settings</div>', unsafe_allow_html=True)
+        batch_mode = st.radio("Batch Engine", [
+            "🚀 Lite (Civilian 4-Class)",
+            "⚔️ War Mode (Naval 5-Class)"
+        ], help="Choose detection model for batch processing")
         batch_conf = st.slider("Confidence Threshold", 0.10, 0.95, 0.50, 0.05, key="batch_conf")
         batch_imgsz = st.select_slider("Resolution", [640, 768, 1024], value=1024, key="batch_res")
 
@@ -1002,9 +1068,9 @@ def page_batch_analysis():
     st.markdown("<br>", unsafe_allow_html=True)
 
     if st.button("🌊  RUN BATCH ANALYSIS", use_container_width=True):
-        model = get_lite_model()
+        model = get_war_model() if "War" in batch_mode else get_lite_model()
         if model is None:
-            st.error("⚠️ YOLO model not found. Cannot run batch analysis.")
+            st.error(f"⚠️ Model for {batch_mode} not found. Ensure weights exist in `models/` directory.")
             return
 
         all_results = []
@@ -1183,7 +1249,7 @@ def page_about():
 
     # Model comparison
     st.markdown("### 🧠 Model Architectures")
-    mc1, mc2 = st.columns(2)
+    mc1, mc2, mc3 = st.columns(3)
     with mc1:
         st.markdown("""
         <div class="glass">
@@ -1192,13 +1258,27 @@ def page_about():
             <table style="color:var(--text-secondary); margin-top:16px; width:100%; font-size:14px;">
                 <tr><td>Parameters</td><td style="text-align:right; color:var(--accent); font-weight:700;">2.83M</td></tr>
                 <tr><td>GFLOPs</td><td style="text-align:right; color:var(--accent); font-weight:700;">9.6</td></tr>
-                <tr><td>Task</td><td style="text-align:right;">Instance Segmentation</td></tr>
+                <tr><td>Classes</td><td style="text-align:right;">4 Civilian</td></tr>
                 <tr><td>mAP@50 (bbox)</td><td style="text-align:right;">0.529</td></tr>
                 <tr><td>mAP@50 (mask)</td><td style="text-align:right;">0.491</td></tr>
-                <tr><td>Inference</td><td style="text-align:right; color:var(--accent);">Real-time / Edge</td></tr>
+                <tr><td>Deployment</td><td style="text-align:right; color:var(--accent);">Real-time / Edge</td></tr>
             </table>
         </div>""", unsafe_allow_html=True)
     with mc2:
+        st.markdown("""
+        <div class="glass">
+            <div class="section-head">⚔️ War Mode</div>
+            <h3 style="margin:0;">YOLO11n-Tactical</h3>
+            <table style="color:var(--text-secondary); margin-top:16px; width:100%; font-size:14px;">
+                <tr><td>Parameters</td><td style="text-align:right; color:var(--coral); font-weight:700;">2.59M</td></tr>
+                <tr><td>GFLOPs</td><td style="text-align:right; color:var(--coral); font-weight:700;">6.5</td></tr>
+                <tr><td>Classes</td><td style="text-align:right;">5 Naval Defense</td></tr>
+                <tr><td>Dataset</td><td style="text-align:right;">DRISHTI</td></tr>
+                <tr><td>Threat Alerts</td><td style="text-align:right;">Mines / Pipelines</td></tr>
+                <tr><td>Deployment</td><td style="text-align:right; color:var(--coral);">Naval / Tactical</td></tr>
+            </table>
+        </div>""", unsafe_allow_html=True)
+    with mc3:
         st.markdown("""
         <div class="glass">
             <div class="section-head">🎯 Pro Mode</div>
@@ -1209,7 +1289,7 @@ def page_about():
                 <tr><td>Task</td><td style="text-align:right;">Detection + Zero-Shot Seg</td></tr>
                 <tr><td>mAP@50</td><td style="text-align:right; font-weight:700;">0.801</td></tr>
                 <tr><td>Precision</td><td style="text-align:right;">0.936</td></tr>
-                <tr><td>Inference</td><td style="text-align:right; color:var(--cyan);">High Accuracy</td></tr>
+                <tr><td>Deployment</td><td style="text-align:right; color:var(--cyan);">High Accuracy Server</td></tr>
             </table>
         </div>""", unsafe_allow_html=True)
 
@@ -1258,6 +1338,7 @@ def main():
         st.markdown('<div class="section-head">System Status</div>', unsafe_allow_html=True)
 
         lite_ok = YOLO_AVAILABLE and LITE_MODEL_PATH.exists()
+        war_ok = YOLO_AVAILABLE and WAR_MODEL_PATH.exists()
         pro_local = PRO_YOLO_PATH.exists()
         sam_ok = SAM_AVAILABLE and SAM_PATH.exists()
 
@@ -1265,12 +1346,19 @@ def main():
         if lite_ok:
             m = get_lite_model()
             if m and hasattr(m, 'names'):
-                st.caption(f"🎯 Classes: {', '.join(m.names.values())}")
+                st.caption(f"🎯 Civilian: {', '.join(m.names.values())}")
+
+        st.markdown(f"{'⚔️' if war_ok else '🔴'} War Mode {'(5 Naval Classes)' if war_ok else 'Missing'}")
+        if war_ok:
+            m_w = get_war_model()
+            if m_w and hasattr(m_w, 'names'):
+                st.caption(f"🛡️ Defense: {', '.join(m_w.names.values())}")
+
         st.markdown(f"{'🟢' if pro_local else '🟢'} Pro YOLO {'Local' if pro_local else 'Auto-DL'}")
         st.markdown(f"{'🟢' if sam_ok else '🟡'} SAM Engine {'Ready' if sam_ok else 'Optional'}")
 
         st.markdown("---")
-        st.caption("v1.1.0 · Sonaris Multi-Class Platform")
+        st.caption("v1.2.0 · Sonaris Multi-Class & Tactical Defense Platform")
 
     # Route to page
     if page == "🏠 Home":

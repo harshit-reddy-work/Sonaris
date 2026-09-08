@@ -1,60 +1,67 @@
 # Sonaris Models Specification
 
-Sonaris implements a tiered multi-model architecture engineered specifically for side-scan sonar acoustic characterization.
+Sonaris implements a 3-tier multi-model architecture engineered specifically for side-scan sonar acoustic characterization across civilian survey, marine ecology, and naval defense domains.
 
 ---
 
-## 1. Lite Model: YOLO11n-Seg (Edge & Real-Time)
+## 1. Lite Mode: YOLO11n (Civilian Marine Survey & Debris)
 
-The Lite model delivers low-latency instance segmentation designed for compute-constrained platforms (NVIDIA Jetson, onboard AUV controllers, and survey laptops).
+The Lite model delivers low-latency detection designed for edge computing (NVIDIA Jetson, onboard AUV controllers, survey laptops).
 
 ### Architecture & Computational Profile
-- **Base Architecture**: Ultralytics YOLO11 Nano Instance Segmentation (`YOLO11n-Seg`)
-- **Total Parameters**: 2,842,803 (~2.84M)
-- **Computational Complexity**: 9.78 GFLOPs
-- **Input Resolution**: 1024×1024 (`imgsz=1024`)
+- **Base Architecture**: Ultralytics YOLO11 Nano (`YOLO11n`)
+- **Total Parameters**: 2,590,620 (~2.59M)
+- **Computational Complexity**: 6.50 GFLOPs
 - **Weights File**: `models/yolo11n_seg_best.pt`
-
-### Training Dataset & Target Classes
-- **Training Corpus**: AI4Shipwrecks Benchmark Dataset (286 high-resolution side-scan sonar image tiles across 28 shipwreck sites collected via AUV).
-- **Target Detection Class**: `0: shipwreck` (Sunken vessels, historic shipwrecks, structural hull ruins).
-- **Epochs**: 100 epochs (AdamW optimizer with cosine learning rate schedule).
-- **Note on Detectable Objects**: The Lite model is specialized strictly for naval and shipwreck structures. Non-vessel objects (e.g., small bicycle frames, hand tools, or fish swarms) are outside its training distribution.
-
-### Validation Benchmark Metrics
-| Metric | Value |
-|---|---|
-| **Box Precision** | 0.580 |
-| **Box Recall** | 0.537 |
-| **Box mAP@50** | 0.531 |
-| **Box mAP@50-95** | 0.317 |
-| **Mask Precision** | 0.574 |
-| **Mask Recall** | 0.500 |
-| **Mask mAP@50** | 0.492 |
-| **Mask mAP@50-95** | 0.261 |
+- **Trained Classes (4)**:
+  - `0: aircraft` (Downed planes, fuselage ruins)
+  - `1: fish` (Biological acoustic swarms)
+  - `2: other` (Seabed debris, man-made anomalies, containers, frames)
+  - `3: shipwreck` (Sunken ships, hulls, maritime architecture)
 
 ---
 
-## 2. Pro Model: YOLOv8x + SAM Hybrid (High Precision)
+## 2. ⚔️ War Mode: YOLO11n Tactical (Naval Defense & Strategic Infrastructure)
 
-The Pro pipeline couples high-capacity detection with foundation segmentation for high-fidelity contour extraction.
+War Mode is specialized for critical maritime infrastructure monitoring, subsea threat detection, and harbor defense.
+
+### Architecture & Computational Profile
+- **Base Architecture**: Ultralytics YOLO11 Nano (`YOLO11n`)
+- **Total Parameters**: 2,590,815 (~2.59M)
+- **Computational Complexity**: 6.50 GFLOPs
+- **Training Corpus**: DRISHTI-SSS Dataset (5,198 side-scan sonar image tiles)
+- **Weights File**: `models/yolo11n_war_best.pt`
+- **Trained Tactical Classes (5)**:
+  - `0: crab_pot` (Seafloor cage traps / benthic markers)
+  - `1: submarine_pipeline` (Underwater oil, gas, and communications infrastructure)
+  - `2: shipwreck` (Sunken naval vessels, hulls, and maritime ruins)
+  - `3: ghost_net` (Abandoned fishing nets, propulsion entanglement hazards)
+  - `4: mine_cylinder` (Cylindrical naval mines, unexploded ordnance)
+
+---
+
+## 3. 🎯 Pro Mode: YOLOv8x + SAM Hybrid (High Precision)
+
+The Pro pipeline couples high-capacity detection with Meta's foundation model for zero-shot boundary segmentation.
 
 ### Components
-- **Detector**: YOLOv8 Extra-Large (`YOLOv8x`, 68.2M parameters).
-  - Target Classes: `aircraft`, `shipwreck`, `seabed_anomalies`.
-  - Benchmarked Performance: mAP@50 = 0.801 (Precision: 0.936, Recall: 0.695).
-- **Segmentation Engine**: Meta Segment Anything Model (`SAM ViT-B`, 91M parameters).
-  - Prompt Mechanism: Automated bounding box and point centroid prompting.
-  - Zero-shot boundary extraction for acoustic shadow contours.
+- **Detector**: YOLOv8 Extra-Large (`YOLOv8x`, 68.2M parameters)
+- **Segmentation Engine**: Meta Segment Anything Model (`SAM ViT-B`, 91M parameters)
+- **Primary Task**: Deep semantic boundary extraction and acoustic shadow analysis
 
 ---
 
 ## Deployment & Usage
 
-Models can be loaded via Python or directly within the Sonaris web dashboard:
 ```python
-from src.segmentation.yolo_seg_engine import YOLOSegEngine
+from ultralytics import YOLO
 
-engine = YOLOSegEngine(model_path="models/yolo11n_seg_best.pt", confidence=0.5, image_size=1024)
-results = engine.segment(sonar_image_array)
+# Load Lite Mode
+lite_model = YOLO("models/yolo11n_seg_best.pt")
+
+# Load War Mode
+war_model = YOLO("models/yolo11n_war_best.pt")
+
+# Run Inference
+results = war_model.predict("sonar_scan.png", conf=0.4)
 ```

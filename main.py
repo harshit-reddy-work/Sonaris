@@ -92,8 +92,8 @@ def main() -> None:
     print(BANNER)
     parser = argparse.ArgumentParser(description="Sonaris CLI - Unified Sonar Intelligence Platform")
     parser.add_argument(
-        "--mode", choices=["lite", "pro"], default="lite",
-        help="Inference mode: lite (YOLO11n-Seg) or pro (YOLOv8x)",
+        "--mode", choices=["lite", "war", "pro"], default="lite",
+        help="Inference mode: lite (Civilian 4-Class), war (Naval 5-Class), or pro (YOLOv8x + SAM)",
     )
     parser.add_argument(
         "--split", choices=["train", "valid", "test"], default="test",
