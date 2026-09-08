@@ -66,11 +66,12 @@ st.set_page_config(
 
 # ── Optional ML imports ─────────────────────────────────────────────────────
 YOLO_AVAILABLE = False
+YOLO_IMPORT_ERROR = None
 try:
     from ultralytics import YOLO
     YOLO_AVAILABLE = True
-except ImportError:
-    pass
+except Exception as e:
+    YOLO_IMPORT_ERROR = str(e)
 
 SAM_AVAILABLE = False
 try:
@@ -80,11 +81,24 @@ except ImportError:
     pass
 
 # ── Model paths ─────────────────────────────────────────────────────────────
-LITE_MODEL_PATH = PROJECT_ROOT / "models" / "yolo11n_seg_best.pt"
-WAR_MODEL_PATH = PROJECT_ROOT / "models" / "yolo11n_war_best.pt"
-PRO_YOLO_PATH = PROJECT_ROOT / "models" / "yolov8x_best.pt"
-SAM_PATH = PROJECT_ROOT / "models" / "sam_vit_b_01ec64.pth"
-DEMO_DIR = PROJECT_ROOT / "data" / "demo"
+def _resolve_model_path(filename: str) -> Path:
+    """Resolve model path checking project root, current working dir, and script dir."""
+    candidates = [
+        PROJECT_ROOT / "models" / filename,
+        Path.cwd() / "models" / filename,
+        Path(__file__).resolve().parent / "models" / filename,
+        Path("models") / filename,
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return candidates[0]
+
+LITE_MODEL_PATH = _resolve_model_path("yolo11n_seg_best.pt")
+WAR_MODEL_PATH = _resolve_model_path("yolo11n_war_best.pt")
+PRO_YOLO_PATH = _resolve_model_path("yolov8x_best.pt")
+SAM_PATH = _resolve_model_path("sam_vit_b_01ec64.pth")
+DEMO_DIR = PROJECT_ROOT / "data" / "demo" if (PROJECT_ROOT / "data" / "demo").exists() else Path.cwd() / "data" / "demo"
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1347,12 +1361,20 @@ def main():
             m = get_lite_model()
             if m and hasattr(m, 'names'):
                 st.caption(f"🎯 Civilian: {', '.join(m.names.values())}")
+        elif not YOLO_AVAILABLE:
+            st.caption(f"⚠️ ultralytics import error: {YOLO_IMPORT_ERROR or 'not installed'}")
+        elif not LITE_MODEL_PATH.exists():
+            st.caption(f"⚠️ File not found: `{LITE_MODEL_PATH.name}` in `{LITE_MODEL_PATH.parent}`")
 
         st.markdown(f"{'⚔️' if war_ok else '🔴'} War Mode {'(5 Naval Classes)' if war_ok else 'Missing'}")
         if war_ok:
             m_w = get_war_model()
             if m_w and hasattr(m_w, 'names'):
                 st.caption(f"🛡️ Defense: {', '.join(m_w.names.values())}")
+        elif not YOLO_AVAILABLE:
+            st.caption(f"⚠️ ultralytics import error")
+        elif not WAR_MODEL_PATH.exists():
+            st.caption(f"⚠️ File not found: `{WAR_MODEL_PATH.name}` in `{WAR_MODEL_PATH.parent}`")
 
         st.markdown(f"{'🟢' if pro_local else '🟢'} Pro YOLO {'Local' if pro_local else 'Auto-DL'}")
         st.markdown(f"{'🟢' if sam_ok else '🟡'} SAM Engine {'Ready' if sam_ok else 'Optional'}")
