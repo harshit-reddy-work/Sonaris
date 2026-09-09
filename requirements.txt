@@ -1,13 +1,18 @@
+# Sonaris — Unified Sonar Intelligence Platform
+# Streamlit Cloud Optimized Dependencies (CPU PyTorch index prevents build timeouts & memory limits)
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 streamlit>=1.28.0
 opencv-python-headless
+torch
+torchvision
 ultralytics
-torch>=2.1.0
-torchvision>=0.16.0
 pandas
-numpy>=1.24.0
-pillow>=10.0.0
-scikit-image>=0.21.0
-matplotlib>=3.7.0
-pyyaml>=6.0
-tqdm>=4.65.0
+numpy
+pillow
+scikit-image
+matplotlib
+pyyaml
+tqdm
 plotly
