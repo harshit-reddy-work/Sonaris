@@ -16,12 +16,80 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+# ── OpenCV Import & Headless Server Fallback ───────────────────────────────
+CV2_AVAILABLE = False
 try:
     import cv2
+    _ = cv2.__version__
     CV2_AVAILABLE = True
-except (ImportError, Exception):
+except Exception:
     cv2 = None
     CV2_AVAILABLE = False
+    import types
+    def _dummy_resize(img, dsize, **kw):
+        if img is None:
+            return np.zeros((dsize[1], dsize[0], 3), dtype=np.uint8)
+        try:
+            nw, nh = dsize
+            if nw <= 0 or nh <= 0:
+                return img
+            pil_i = Image.fromarray(img)
+            res = pil_i.resize((nw, nh), Image.BILINEAR)
+            return np.array(res)
+        except Exception:
+            return img
+
+    def _dummy_copyMakeBorder(src, top, bottom, left, right, borderType=0, value=(114, 114, 114)):
+        if src is None:
+            return src
+        val = value[0] if isinstance(value, (tuple, list)) else value
+        if src.ndim == 3:
+            return np.pad(src, ((top, bottom), (left, right), (0, 0)), mode='constant', constant_values=val)
+        return np.pad(src, ((top, bottom), (left, right)), mode='constant', constant_values=val)
+
+    class _DummyCV2(types.ModuleType):
+        def __init__(self, name):
+            super().__init__(name)
+            self.__file__ = 'dummy_cv2.py'
+            self.__version__ = '4.10.0'
+            self.COLOR_BGR2RGB = 4
+            self.COLOR_RGB2BGR = 4
+            self.INTER_NEAREST = 0
+            self.INTER_LINEAR = 1
+            self.FONT_HERSHEY_SIMPLEX = 0
+            self.LINE_AA = 16
+            self.RETR_EXTERNAL = 0
+            self.CHAIN_APPROX_SIMPLE = 1
+            self.IMREAD_COLOR = 1
+            self.BORDER_CONSTANT = 0
+            self.resize = _dummy_resize
+            self.copyMakeBorder = _dummy_copyMakeBorder
+
+        def __getattr__(self, name):
+            if name.isupper():
+                return 1
+            def _dummy_func(*args, **kwargs):
+                if name == 'imread':
+                    fn = args[0] if args else ''
+                    try:
+                        return np.array(Image.open(fn).convert('RGB'))
+                    except Exception:
+                        return np.zeros((640, 640, 3), dtype=np.uint8)
+                if name == 'imdecode':
+                    return np.zeros((640, 640, 3), dtype=np.uint8)
+                if name == 'imencode':
+                    return (True, np.zeros(10, dtype=np.uint8))
+                if name == 'getTextSize':
+                    return ((50, 15), 5)
+                if name == 'findContours':
+                    return ([], None)
+                if name == 'minAreaRect':
+                    return ((0,0), (0,0), 0)
+                return None
+            return _dummy_func
+
+    cv2 = _DummyCV2('cv2')
+    sys.modules['cv2'] = cv2
 
 
 def bgr_to_rgb(img):
