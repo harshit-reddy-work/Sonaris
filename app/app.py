@@ -150,8 +150,25 @@ def inject_css():
         font-weight: 500;
     }
 
-    /* Hide Streamlit branding */
-    #MainMenu, footer, header {visibility: hidden;}
+    /* Hide Streamlit footer and main menu, but keep sidebar expand toggle button visible */
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+        z-index: 999999 !important;
+    }
+    /* Ensure sidebar toggle button is prominently visible */
+    button[aria-label="Expand sidebar"],
+    button[aria-label="Collapse sidebar"],
+    button[data-testid="stHeaderNavControl"],
+    [data-testid="stSidebarCollapseButton"] {
+        color: #00e5a0 !important;
+        background: rgba(0, 229, 160, 0.2) !important;
+        border: 1px solid rgba(0, 229, 160, 0.4) !important;
+        border-radius: 8px !important;
+        visibility: visible !important;
+        display: flex !important;
+    }
 
     /* Glass Cards */
     .glass {
@@ -1324,11 +1341,49 @@ def page_about():
 
 
 
+def render_top_nav():
+    """Render top navigation bar so pages can be accessed directly without opening sidebar."""
+    if "nav_page" not in st.session_state:
+        st.session_state["nav_page"] = "🏠 Home"
+
+    pages = [
+        "🏠 Home",
+        "🔍 Single Analysis",
+        "📊 Batch Analysis",
+        "🗺️ Dataset Explorer",
+        "ℹ️ About",
+    ]
+    cols = st.columns(len(pages))
+    for i, p_name in enumerate(pages):
+        with cols[i]:
+            is_active = st.session_state["nav_page"] == p_name
+            btn_label = f"✨ {p_name}" if is_active else p_name
+            if st.button(btn_label, key=f"topnav_{i}", use_container_width=True):
+                st.session_state["nav_page"] = p_name
+                st.rerun()
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # MAIN ROUTER
 # ════════════════════════════════════════════════════════════════════════════
 def main():
     inject_css()
+
+    if "nav_page" not in st.session_state:
+        st.session_state["nav_page"] = "🏠 Home"
+
+    # Render top bar navigation
+    render_top_nav()
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    page_options = [
+        "🏠 Home",
+        "🔍 Single Analysis",
+        "📊 Batch Analysis",
+        "🗺️ Dataset Explorer",
+        "ℹ️ About",
+    ]
+    current_idx = page_options.index(st.session_state["nav_page"]) if st.session_state["nav_page"] in page_options else 0
 
     # Sidebar navigation
     with st.sidebar:
@@ -1338,13 +1393,10 @@ def main():
                     unsafe_allow_html=True)
         st.markdown("---")
 
-        page = st.radio("Navigate", [
-            "🏠 Home",
-            "🔍 Single Analysis",
-            "📊 Batch Analysis",
-            "🗺️ Dataset Explorer",
-            "ℹ️ About",
-        ], label_visibility="collapsed")
+        page = st.radio("Navigate", page_options, index=current_idx, key="sidebar_nav_radio", label_visibility="collapsed")
+        if page != st.session_state["nav_page"]:
+            st.session_state["nav_page"] = page
+            st.rerun()
 
         st.markdown("---")
 
@@ -1383,15 +1435,16 @@ def main():
         st.caption("v1.2.0 · Sonaris Multi-Class & Tactical Defense Platform")
 
     # Route to page
-    if page == "🏠 Home":
+    current_page = st.session_state.get("nav_page", "🏠 Home")
+    if current_page == "🏠 Home":
         page_home()
-    elif page == "🔍 Single Analysis":
+    elif current_page == "🔍 Single Analysis":
         page_single_analysis()
-    elif page == "📊 Batch Analysis":
+    elif current_page == "📊 Batch Analysis":
         page_batch_analysis()
-    elif page == "🗺️ Dataset Explorer":
+    elif current_page == "🗺️ Dataset Explorer":
         page_dataset_explorer()
-    elif page == "ℹ️ About":
+    elif current_page == "ℹ️ About":
         page_about()
 
 
