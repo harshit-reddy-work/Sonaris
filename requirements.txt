@@ -1,11 +1,6 @@
 streamlit>=1.28.0
-opencv-python-headless
 ultralytics
+opencv-python-headless
 pandas
 numpy
 pillow
-scikit-image
-matplotlib
-pyyaml
-tqdm
-plotly
